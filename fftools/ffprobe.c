@@ -133,6 +133,8 @@ static int read_intervals_nb = 0;
 
 static int find_stream_info  = 1;
 
+static char *show_codecs_with_extension  = NULL;
+
 /* section structure definition */
 
 #define SECTION_MAX_NB_CHILDREN 10
@@ -3573,6 +3575,7 @@ static const OptionDef real_options[] = {
     { "print_filename", HAS_ARG, {.func_arg = opt_print_filename}, "override the printed input filename", "print_file"},
     { "find_stream_info", OPT_BOOL | OPT_INPUT | OPT_EXPERT, { &find_stream_info },
         "read and decode the streams to fill missing information with heuristics" },
+    { "show_support_codecs", OPT_STRING | HAS_ARG, { &show_codecs_with_extension}, "show support codecs with input extension" },
     { NULL, },
 };
 
@@ -3585,6 +3588,35 @@ static inline int check_section_show_entries(int section_id)
     for (id = section->children_ids; *id != -1; id++)
         if (check_section_show_entries(*id))
             return 1;
+    return 0;
+}
+
+static int show_support_codecs(const char* extension)
+{
+    AVFormatContext *format_context = NULL;
+    {
+        char tmp[128] = {0};
+        sprintf(tmp, "tmp.%s", extension);
+        avformat_alloc_output_context2(&format_context, NULL, NULL, tmp);
+    }
+    if (format_context == NULL || format_context->oformat == NULL)
+        return AVERROR_MUXER_NOT_FOUND;
+    
+    char codec_names[1024] = {0};
+    for(int i = 1; i < AV_CODEC_ID_WRAPPED_AVFRAME; ++i)
+    {
+        const AVCodecDescriptor *cd = avcodec_descriptor_get(i);
+        if (cd == NULL)
+            continue;
+        
+        if (1 == avformat_query_codec(format_context->oformat, i, 0))
+        {
+            strcat(codec_names, cd->name);
+            strcat(codec_names, ", ");
+        }
+    }
+    
+    av_log(NULL, AV_LOG_INFO, "%s\n", codec_names);
     return 0;
 }
 
@@ -3660,6 +3692,12 @@ int main(int argc, char **argv)
 
     writer_register_all();
 
+    if (show_codecs_with_extension != NULL)
+    {
+        av_log(NULL, AV_LOG_INFO, "show support codecs with extension: %s\n", show_codecs_with_extension);
+        show_support_codecs(show_codecs_with_extension);
+        goto end;
+    }
     if (!print_format)
         print_format = av_strdup("default");
     if (!print_format) {
