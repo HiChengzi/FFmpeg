@@ -357,6 +357,8 @@ static int autorotate = 1;
 static int find_stream_info = 1;
 static int filter_nbthreads = 0;
 
+static int initial_pause = 0;
+
 /* current context */
 static int is_full_screen;
 static int64_t audio_callback_time;
@@ -1683,6 +1685,12 @@ retry:
             frame_queue_next(&is->pictq);
             is->force_refresh = 1;
 
+
+
+            if (initial_pause == 1){
+                initial_pause = 0;
+                toggle_pause(is);
+            }
             if (is->step && !is->paused)
                 stream_toggle_pause(is);
         }
@@ -3295,6 +3303,9 @@ static void event_loop(VideoState *cur_stream)
                 toggle_full_screen(cur_stream);
                 cur_stream->force_refresh = 1;
                 break;
+            case SDLK_r:
+                cur_stream->force_refresh = 1;
+                break;
             case SDLK_p:
             case SDLK_SPACE:
                 toggle_pause(cur_stream);
@@ -3632,6 +3643,7 @@ static const OptionDef options[] = {
     { "find_stream_info", OPT_BOOL | OPT_INPUT | OPT_EXPERT, { &find_stream_info },
         "read and decode the streams to fill missing information with heuristics" },
     { "filter_threads", HAS_ARG | OPT_INT | OPT_EXPERT, { &filter_nbthreads }, "number of filter threads per graph" },
+    { "initial_pause",  HAS_ARG | OPT_INT | OPT_EXPERT, { &initial_pause }, "do not start playing the stream immediately"},
     { NULL, },
 };
 
